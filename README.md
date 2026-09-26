@@ -1,5 +1,35 @@
 # WASPID Runbook Executor
 
+
+<div align="center">
+
+## ⚡ WASPID Reflex — Agents That Act, Locally
+
+> **A local-first AI worker that sees, understands, and acts on your computer.**
+
+<table>
+<tr>
+<td align="center"><b>👁️ SEE</b><br/>Understands apps & web pages</td>
+<td align="center"><b>🧠 THINK</b><br/>Runs local AI models</td>
+<td align="center"><b>🖱️ ACT</b><br/>Controls apps with its own cursor</td>
+<td align="center"><b>🧠 REMEMBER</b><br/>Learns repeatable workflows</td>
+</tr>
+</table>
+
+**macOS · Windows · Linux · Offline-first · Open Source**
+
+Reflex is a separate WASPID project exploring the next generation of **Agents That Act** — AI that doesn't just respond, but operates real software, verifies its actions, and asks for confirmation before sensitive operations.
+
+**WASPID acts on infrastructure.
+Reflex acts on the computer.**
+
+🌐 **[reflex.waspid.com](https://reflex.waspid.com/)**
+
+</div>
+
+
+
+
 > **Give AI the runbook. Let it execute the safe steps. Make it ask before anything destructive.**
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-3776AB)
