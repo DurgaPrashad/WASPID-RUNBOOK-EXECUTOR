@@ -1,7 +1,8 @@
 """WASPID operator dashboard — live backend (stdlib HTTP + Server-Sent Events).
 
 Drives the runbook engine against the real Docker daemon (or the in-memory fake
-with WASPID_FAKE_DOCKER=1) and streams every state change to the browser.
+with WASPID_FAKE_DOCKER=1) plus the enabled connectors (WASPID API + DB, AWS),
+and streams every state change and integration health to the browser.
 
 Anyone who can reach the page gets a read-only live view. Start / approve /
 reject / reset require the operator token (header X-Operator-Token). Set
@@ -33,6 +34,8 @@ from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parent.parent))
 import _bootstrap  # noqa: E402,F401 — makes `waspid.*` importable
 
+from waspid.agent.llm import detect as detect_llm  # noqa: E402
+from waspid.connectors import default_connectors  # noqa: E402
 from waspid.engine.audit import AuditLog  # noqa: E402
 from waspid.engine.runbook import RunbookEngine, load_runbook  # noqa: E402
 from waspid.mcp_server.docker_engine import FakeDockerEngine, RealDockerEngine  # noqa: E402
@@ -49,6 +52,7 @@ OPERATOR_TOKEN = os.environ.get("WASPID_OPERATOR_TOKEN") or secrets.token_urlsaf
 MAX_STREAMS = 64
 RESULT_PREVIEW_CHARS = 8000
 STATS_HISTORY = 40
+INTEGRATIONS_EVERY = 5.0
 
 # The cleanup step removes this "previous release" image; it is rebuilt from the
 # demo API Dockerfile whenever it's missing so the runbook can be replayed.
@@ -102,6 +106,8 @@ class AppState:
         else:
             self.docker, self.mode = RealDockerEngine(), "live"
         self.engine_info = self.docker.describe()
+        self.connectors = default_connectors(self.docker)
+        self.integrations: List[Dict[str, Any]] = []
         self.runbook_source = RUNBOOK_FILE.read_text()
         self.containers: List[Dict[str, Any]] = []
         self.containers_at: Optional[float] = None
@@ -112,13 +118,14 @@ class AppState:
         self._new_run()
         self._start_prepare()
         threading.Thread(target=self._poll_containers, daemon=True).start()
+        threading.Thread(target=self._poll_integrations, daemon=True).start()
         if self.mode == "live":
             threading.Thread(target=self._poll_stats, daemon=True).start()
 
     # ---- run lifecycle ---------------------------------------------------
     def _new_run(self) -> None:
         self.gate = ApprovalGate()
-        self.tools = build_tools(self.docker, self.gate)
+        self.tools = build_tools(self.docker, self.gate, self.connectors)
         self.runbook = load_runbook(RUNBOOK_FILE)
         self.run_id: Optional[str] = None
         self.audit = AuditLog("pending")
@@ -246,6 +253,30 @@ class AppState:
                     self.docker_error = str(e)
             time.sleep(1.5)
 
+    def _poll_integrations(self) -> None:
+        """Health of everything WASPID is wired to. Never exposes keys or account ids."""
+        while True:
+            with self.lock:
+                docker_error = self.docker_error
+            rows: List[Dict[str, Any]] = [{
+                "key": "docker", "name": "Docker", "ok": docker_error is None,
+                "detail": docker_error or (f"Engine {self.engine_info.get('version')}" if self.mode == "live"
+                                           else "simulated engine")}]
+            for c in self.connectors:
+                try:
+                    rows += c.status()
+                except Exception as e:  # noqa: BLE001 — one broken connector must not hide the rest
+                    rows.append({"key": type(c).__name__, "name": type(c).__name__, "ok": False, "detail": str(e)})
+            if not any(r["key"] == "aws" for r in rows):
+                rows.append({"key": "aws", "name": "AWS", "ok": None, "detail": "set WASPID_ENABLE_AWS=1 to connect"})
+            llm = detect_llm()
+            rows.append({"key": "llm", "name": "LLM", "ok": True if llm.configured else False if llm.error else None,
+                         "detail": llm.describe() if llm.configured
+                         else llm.error or "set OPENAI_API_KEY or TFY_API_KEY"})
+            with self.lock:
+                self.integrations = rows
+            time.sleep(INTEGRATIONS_EVERY)
+
     def _poll_stats(self) -> None:
         pool = ThreadPoolExecutor(max_workers=4)
         while True:
@@ -308,6 +339,7 @@ class AppState:
                 "audit": list(self.audit.events),
                 "containers": self.containers,
                 "containers_at": self.containers_at,
+                "integrations": self.integrations,
                 "metrics": self._metrics(),
             }
 

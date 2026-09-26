@@ -13,7 +13,7 @@ import os
 import secrets
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 
 class Risk(str, enum.Enum):
@@ -27,6 +27,10 @@ class ToolSpec:
     name: str
     risk: Risk
     description: str
+    # JSON-schema properties, in call order. The first one is the target and is
+    # passed positionally (that is what approval tokens are bound to).
+    params: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    optional: Tuple[str, ...] = ()
 
     @property
     def requires_approval(self) -> bool:

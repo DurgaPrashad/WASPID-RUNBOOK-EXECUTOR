@@ -1,0 +1,48 @@
+# Redeploy the WASPID API on AWS ECS, gated on alarms and database health.
+# Real AWS:   WASPID_ENABLE_AWS=1 AWS_REGION=… (credentials from your AWS profile / SSO / IAM role)
+# Simulated:  WASPID_FAKE_AWS=1
+#   WASPID_RUNBOOK=aws_ecs_redeploy.yaml python dashboard/server.py
+#   python run_agent.py --runbook aws_ecs_redeploy.yaml
+name: AWS ECS Redeploy
+steps:
+  - id: alarms
+    description: No CloudWatch alarms are firing for WASPID
+    action: aws_cloudwatch_alarms
+    target: waspid
+    risk: read_only
+    verify: { expect_status: ok }
+
+  - id: service
+    description: ECS service is steady before we touch it
+    action: aws_ecs_service_status
+    target: waspid-prod/waspid-api
+    risk: read_only
+    verify: { expect_status: steady }
+
+  - id: database
+    description: Production database (RDS) is available
+    action: aws_rds_status
+    target: waspid-db-prod
+    risk: read_only
+    verify: { expect_status: available }
+
+  - id: redeploy
+    description: Force a new deployment of waspid-api (every running task is replaced)
+    action: aws_ecs_redeploy_service
+    target: waspid-prod/waspid-api
+    risk: destructive
+    requires_approval: true
+
+  - id: stable
+    description: Wait for the rollout to reach a steady state
+    action: aws_ecs_wait_stable
+    target: waspid-prod/waspid-api
+    risk: read_only
+    verify: { expect_status: steady }
+
+  - id: alarms_after
+    description: Still no alarms firing after the rollout
+    action: aws_cloudwatch_alarms
+    target: waspid
+    risk: read_only
+    verify: { expect_status: ok }

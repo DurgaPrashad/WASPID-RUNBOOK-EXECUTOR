@@ -266,6 +266,10 @@ tr.cur td{background:var(--surface-2)}
 .hdot.sandbox{background:var(--violet);box-shadow:0 0 0 3px var(--violet-bg)}
 .ctr-name{font:650 13.5px var(--mono);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctr-top .chip{margin-left:auto}
+.ctr.static{cursor:default}
+.ctr.static:hover{background:transparent}
+.ctr.static .ctr-name{font-family:var(--sans)}
+.ctr.static .ctr-sub{overflow-wrap:anywhere}
 .ctr-sub{color:var(--muted);font-size:12px;margin:3px 0 0 19px;display:flex;gap:6px;flex-wrap:wrap}
 .ctr-sub .mono{color:var(--text-2)}
 .ctr-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:9px 0 0 19px}
@@ -409,6 +413,10 @@ dialog::backdrop{background:rgba(5,8,13,.6);backdrop-filter:blur(3px)}
     </section>
 
     <aside class="side">
+      <section class="card">
+        <div class="card-h"><h2>Integrations</h2><span class="grow"></span><span class="count" id="intCount"></span></div>
+        <div class="ctrs" id="ints"></div>
+      </section>
       <section class="card">
         <div class="card-h"><h2>Containers</h2><span class="grow"></span><span class="count" id="ctrCount"></span></div>
         <div class="ctrs" id="ctrs"></div>
@@ -600,7 +608,7 @@ function apply(s) {
 function render() {
   if (!S) return;
   renderHeader(); renderRunbar(); renderNotices(); renderKPIs(); renderApproval();
-  renderSteps(); renderActivity(); renderDetail(); renderContainers(); tick();
+  renderSteps(); renderActivity(); renderDetail(); renderIntegrations(); renderContainers(); tick();
 }
 
 function renderHeader() {
@@ -774,6 +782,18 @@ function renderDetail() {
     <div style="color:var(--text-2)">${esc(t.description)}</div>
     <div class="facts">${facts.map(([k, v]) => `<div class="fact"><div class="label">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
     ${body}`;
+}
+
+function renderIntegrations() {
+  const rows = S.integrations || [];
+  const on = rows.filter(r => r.ok !== null && r.ok !== undefined);
+  $("#intCount").textContent = rows.length ? `${on.filter(r => r.ok).length} of ${on.length} connected` : "checking…";
+  if (!changed("ints", rows)) return;
+  $("#ints").innerHTML = rows.map(r => {
+    const [dot, chip, label] = r.ok === true ? ["healthy", "ok", "connected"] : r.ok === false ? ["down", "danger", "error"] : ["", "muted", "off"];
+    return `<div class="ctr static"><div class="ctr-top"><span class="hdot ${dot}"></span><span class="ctr-name">${esc(r.name)}</span><span class="chip ${chip}">${label}</span></div>
+      <div class="ctr-sub">${esc(r.detail || "")}</div></div>`;
+  }).join("");
 }
 
 function renderContainers() {

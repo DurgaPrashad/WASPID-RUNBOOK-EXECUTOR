@@ -18,9 +18,10 @@ Open `waspid/runbooks/production_deployment.yaml`.
 Click **Start run** on the console (or `.venv/bin/python demo.py`).
 > "I'm handing this runbook to the agent. It executes the steps in order — it doesn't get to choose."
 
-**Scene 3 — It inspects real Docker.**
-Steps `inspect`, `health`, `version` turn green; show `docker ps` alongside.
-> "These are real Docker API calls — real containers, real health checks. Read-only tools need no approval."
+**Scene 3 — It inspects real infrastructure.**
+Steps `inspect`, `health`, `api`, `db`, `version` turn green; point at the **Integrations** panel
+(Docker, WASPID API, WASPID DB, AWS, LLM) and show `docker ps` alongside.
+> "These are real calls — the Docker Engine, an HTTP health check on the WASPID API, a live probe of the Postgres database. Read-only tools need no approval. If the database were down, the runbook would stop right here."
 
 **Scene 4 — Generated code runs in a sandbox.**
 Steps `validate` and `build` execute via `run_sandbox_command`.
@@ -45,7 +46,11 @@ Click **REJECT**.
 > "This time I say no. The tool returns the directive STOP RUNBOOK. The step is marked rejected, every remaining step is marked stopped, and the agent doesn't retry or look for a workaround. Rejection isn't a suggestion — it's enforced in code."
 
 Show the timeline: `restart` = rejected, `verify` and `cleanup` = stopped.
-> "This exact behavior — approve, reject, forged tokens, replayed tokens — is covered by eight passing acceptance tests."
+> "This exact behavior — approve, reject, forged tokens, replayed tokens — is covered by 31 passing tests, including an LLM agent that tries to approve itself."
+
+Optional — Take 3: an LLM drives it (OpenAI or TrueFoundry AI Gateway).
+Run `.venv/bin/python run_agent.py` (or `WASPID_FAKE_AWS=1 … --runbook aws_ecs_redeploy.yaml`).
+> "Same tools, same gate — now a model plans the calls. It still stops at the destructive step and waits for me."
 
 Close:
 > "WASPID: give AI the runbook, let it execute the safe steps, and make it ask before anything destructive."

@@ -1,6 +1,6 @@
 """WASPID Infrastructure MCP server (FastMCP, stdio).
 
-TrueForge → MCP → this server → Docker Engine.
+TrueForge / TrueFoundry → MCP → this server → Docker Engine, WASPID API + DB, AWS.
 
 Risk metadata is embedded in every tool description AND enforced in code:
 destructive tools raise ApprovalRequired unless a human-granted, single-use
@@ -16,9 +16,11 @@ from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
 
+from waspid.connectors import default_connectors
+
 from .docker_engine import FakeDockerEngine, RealDockerEngine
-from .safety import ApprovalGate, ApprovalRejected, ApprovalRequired
-from .tools import TOOL_SPECS, build_tools
+from .safety import ApprovalGate
+from .tools import build_tools, invoke
 
 mcp = FastMCP("waspid-infrastructure")
 
@@ -28,22 +30,11 @@ else:
     engine = RealDockerEngine()
 
 gate = ApprovalGate()
-tools = build_tools(engine, gate)
+tools = build_tools(engine, gate, default_connectors(engine))
 
 
 def _call(name: str, *args, approval_id: Optional[str] = None, **kwargs) -> str:
-    try:
-        if TOOL_SPECS[name].requires_approval:
-            result = tools[name](*args, approval_id=approval_id, **kwargs)
-        else:
-            result = tools[name](*args, **kwargs)
-        return json.dumps({"ok": True, "risk": TOOL_SPECS[name].risk.value, "result": result}, default=str)
-    except ApprovalRejected as e:
-        return json.dumps({"ok": False, "status": "rejected", "message": str(e), "directive": "STOP RUNBOOK"})
-    except ApprovalRequired as e:
-        return json.dumps({"ok": False, "status": "waiting_for_approval", "approval_card": e.request.to_card()})
-    except Exception as e:  # noqa: BLE001
-        return json.dumps({"ok": False, "status": "error", "message": str(e)})
+    return json.dumps(invoke(tools, name, *args, approval_id=approval_id, **kwargs), default=str)
 
 
 # ---- read-only ----------------------------------------------------------
@@ -116,6 +107,68 @@ def remove_image(image: str, approval_id: str = "") -> str:
 def remove_volume(volume: str, approval_id: str = "") -> str:
     """Remove a volume (DATA LOSS). {"risk": "destructive", "requires_approval": true}"""
     return _call("remove_volume", volume, approval_id=approval_id)
+
+
+# ---- WASPID platform: API + database --------------------------------------
+@mcp.tool()
+def waspid_api_health() -> str:
+    """HTTP health check of the WASPID API (status, version, latency). RISK: read_only"""
+    return _call("waspid_api_health")
+
+@mcp.tool()
+def waspid_db_health() -> str:
+    """WASPID Postgres database: accepting connections, version, size, active
+    connections. RISK: read_only"""
+    return _call("waspid_db_health")
+
+
+# ---- AWS (registered only with WASPID_ENABLE_AWS=1 or WASPID_FAKE_AWS=1) ----
+if "aws_list_ec2_instances" in tools:
+    @mcp.tool()
+    def aws_list_ec2_instances() -> str:
+        """List EC2 instances in the configured region. RISK: read_only"""
+        return _call("aws_list_ec2_instances")
+
+    @mcp.tool()
+    def aws_cloudwatch_alarms(prefix: str = "") -> str:
+        """CloudWatch alarms currently firing (status 'ok' when none). RISK: read_only"""
+        return _call("aws_cloudwatch_alarms", prefix)
+
+    @mcp.tool()
+    def aws_ecs_service_status(service: str) -> str:
+        """ECS service rollout state; service is 'cluster/service'. RISK: read_only"""
+        return _call("aws_ecs_service_status", service)
+
+    @mcp.tool()
+    def aws_ecs_wait_stable(service: str, timeout: int = 600) -> str:
+        """Wait for an ECS service ('cluster/service') to reach steady state. RISK: read_only"""
+        return _call("aws_ecs_wait_stable", service, timeout=timeout)
+
+    @mcp.tool()
+    def aws_rds_status(db_instance: str) -> str:
+        """RDS instance status, engine, class, Multi-AZ. RISK: read_only"""
+        return _call("aws_rds_status", db_instance)
+
+    @mcp.tool()
+    def aws_reboot_ec2_instance(instance_id: str, approval_id: str = "") -> str:
+        """Reboot an EC2 instance. {"risk": "destructive", "requires_approval": true}"""
+        return _call("aws_reboot_ec2_instance", instance_id, approval_id=approval_id)
+
+    @mcp.tool()
+    def aws_stop_ec2_instance(instance_id: str, approval_id: str = "") -> str:
+        """Stop an EC2 instance. {"risk": "destructive", "requires_approval": true}"""
+        return _call("aws_stop_ec2_instance", instance_id, approval_id=approval_id)
+
+    @mcp.tool()
+    def aws_ecs_redeploy_service(service: str, approval_id: str = "") -> str:
+        """Force a new deployment of an ECS service ('cluster/service').
+        {"risk": "destructive", "requires_approval": true}"""
+        return _call("aws_ecs_redeploy_service", service, approval_id=approval_id)
+
+    @mcp.tool()
+    def aws_reboot_rds_instance(db_instance: str, approval_id: str = "") -> str:
+        """Reboot an RDS instance. {"risk": "destructive", "requires_approval": true}"""
+        return _call("aws_reboot_rds_instance", db_instance, approval_id=approval_id)
 
 
 # ---- approval flow (wired to the human, NOT the model) --------------------

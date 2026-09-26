@@ -3,6 +3,8 @@
   "steps": [
     {"id": "inspect", "description": "Inspect current infrastructure", "action": "list_containers", "risk": "read_only"},
     {"id": "health", "description": "Check application health", "action": "container_health", "target": "waspid-api", "risk": "read_only", "verify": {"expect_health": "healthy"}},
+    {"id": "api", "description": "Check the WASPID API answers over HTTP", "action": "waspid_api_health", "risk": "read_only", "verify": {"expect_status": "ok"}},
+    {"id": "db", "description": "Check the WASPID database accepts connections", "action": "waspid_db_health", "risk": "read_only", "verify": {"expect_status": "ok"}},
     {"id": "version", "description": "Inspect latest application version", "action": "inspect_container", "target": "waspid-api", "risk": "read_only"},
     {"id": "validate", "description": "Generate and run validation tests in sandbox", "action": "run_sandbox", "risk": "safe",
      "params": {"image": "python:3.12-slim", "command": ["python", "validate_release.py"],

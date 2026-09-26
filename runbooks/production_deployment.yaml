@@ -12,6 +12,18 @@ steps:
     risk: read_only
     verify: { expect_health: healthy }
 
+  - id: api
+    description: Check the WASPID API answers over HTTP
+    action: waspid_api_health
+    risk: read_only
+    verify: { expect_status: ok }
+
+  - id: db
+    description: Check the WASPID database accepts connections
+    action: waspid_db_health
+    risk: read_only
+    verify: { expect_status: ok }
+
   - id: version
     description: Inspect latest application version
     action: inspect_container

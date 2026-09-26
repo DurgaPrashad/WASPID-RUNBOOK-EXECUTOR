@@ -1,6 +1,8 @@
 # WASPID Runbook Executor — Python 3.12+
-# (dashboard/server.py and demo.py are stdlib-only; no extra deps needed for them)
-mcp[cli]<2
-docker
-pyyaml
+# (dashboard/server.py and demo.py are stdlib-only apart from docker; the rest is optional per feature)
+mcp[cli]<2          # MCP server (TrueFoundry / TrueForge, any MCP client)
+docker              # Docker Engine
+pyyaml              # YAML runbooks
+openai>=1.40        # LLM agent: OpenAI or TrueFoundry AI Gateway (OpenAI-compatible)
+boto3               # AWS connector (opt-in: WASPID_ENABLE_AWS=1)
 pytest

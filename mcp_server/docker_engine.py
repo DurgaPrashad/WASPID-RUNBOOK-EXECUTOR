@@ -14,6 +14,10 @@ from typing import Any, Dict, List, Optional, Protocol
 
 SANDBOX_LIMITS = {"network": "none", "memory": "256m", "cpus": 0.5, "user": "1000:1000"}
 
+_PG_STATUS_SQL = ("select current_setting('server_version'), pg_database_size(current_database()), "
+                  "(select count(*) from pg_stat_activity where datname = current_database()), "
+                  "extract(epoch from now() - pg_postmaster_start_time())::int")
+
 # docker-py ignores `docker context`, so find the socket of common local runtimes.
 _SOCKET_CANDIDATES = (
     "/var/run/docker.sock",
@@ -148,6 +152,26 @@ class RealDockerEngine:
         return {"cpu_percent": round(cpu_delta / sys_delta * ncpu * 100, 2) if sys_delta > 0 else 0.0,
                 "mem_bytes": max(used, 0), "mem_limit": mem.get("limit", 0)}
 
+    def postgres_status(self, name: str, user: str, db: str) -> Dict[str, Any]:
+        """Read-only probe of a Postgres container: fixed commands, never model-supplied."""
+        import docker
+
+        out: Dict[str, Any] = {"container": name, "database": db}
+        try:
+            c = self._client.containers.get(name)
+            ready = c.exec_run(["pg_isready", "-U", user, "-d", db])
+            out["detail"] = ready.output.decode(errors="replace").strip()
+            if ready.exit_code != 0:
+                return {**out, "status": "down"}
+            q = c.exec_run(["psql", "-U", user, "-d", db, "-AtX", "-F", "|", "-c", _PG_STATUS_SQL])
+            if q.exit_code != 0:
+                return {**out, "status": "degraded", "detail": q.output.decode(errors="replace").strip()}
+            version, size, conns, uptime = q.output.decode().strip().split("|")
+            return {**out, "status": "ok", "server_version": version, "size_bytes": int(size),
+                    "connections": int(conns), "uptime_s": int(uptime)}
+        except (docker.errors.NotFound, docker.errors.APIError) as e:
+            return {**out, "status": "down", "detail": str(e)}
+
     def image_exists(self, image: str) -> bool:
         import docker
 
@@ -277,6 +301,15 @@ class FakeDockerEngine:
     def container_stats(self, name):
         self._c(name)
         return {"cpu_percent": 0.0, "mem_bytes": 0, "mem_limit": 0}
+
+    def postgres_status(self, name, user, db):
+        c = self.containers.get(name)
+        if not c or c["status"] != "running":
+            return {"container": name, "database": db, "status": "down",
+                    "detail": f"{name} is not running"}
+        return {"container": name, "database": db, "status": "ok",
+                "detail": "/var/run/postgresql:5432 - accepting connections",
+                "server_version": "16.4", "size_bytes": 7_700_000, "connections": 1, "uptime_s": 3600}
 
     def run_sandbox(self, image, command, files, timeout=120):
         self.calls.append(("run_sandbox", image, tuple(command), tuple(files)))

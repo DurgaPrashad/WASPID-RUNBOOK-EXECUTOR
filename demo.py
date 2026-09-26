@@ -17,6 +17,7 @@ from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parent))
 import _bootstrap  # noqa: E402,F401 — makes `waspid.*` importable
 
+from waspid.connectors import default_connectors
 from waspid.engine.audit import AuditLog
 from waspid.engine.runbook import RunbookEngine, load_runbook
 from waspid.mcp_server.docker_engine import FakeDockerEngine, RealDockerEngine
@@ -67,7 +68,7 @@ def main() -> int:
 
     runbook = load_runbook(ROOT / "runbooks" / "production_deployment.json")
     gate = ApprovalGate()
-    tools = build_tools(engine_impl, gate)
+    tools = build_tools(engine_impl, gate, default_connectors(engine_impl))
     run_id = time.strftime("run_%Y%m%d_%H%M%S", time.gmtime()) + f"_{secrets.token_hex(2)}"
     audit_dir = ROOT / "audit"
     audit_dir.mkdir(exist_ok=True)
