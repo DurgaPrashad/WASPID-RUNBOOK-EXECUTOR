@@ -62,8 +62,6 @@ STOP RUNBOOK semantics. The safety layer doesn't change.
 
 ## Operator console
 
-<img width="2940" height="1598" alt="WASPID runbook pipeline and approval flow" src="https://github.com/user-attachments/assets/39032dd4-ea3f-492e-b27a-db3508925fd3" />
-
 - **Live.** State streams over Server-Sent Events. Container health, CPU and memory come
   from the real Docker Engine.
 - **Integrations panel.** It shows live health of Docker, the WASPID API, the WASPID DB, AWS and the
@@ -141,6 +139,8 @@ docker compose -f demo_infra/docker-compose.yml up -d --build
 
 ## LLM agent: OpenAI or TrueFoundry AI Gateway
 
+
+<img width="2940" height="1598" alt="WASPID runbook pipeline and approval flow" src="https://github.com/user-attachments/assets/39032dd4-ea3f-492e-b27a-db3508925fd3" />
 `run_agent.py` gives the runbook to an LLM. **The model plans and calls tools, and WASPID
 enforces the rules in code:**
 
