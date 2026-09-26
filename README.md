@@ -1,4 +1,12 @@
 # WASPID Runbook Executor
+images:
+
+<img width="2684" height="1582" alt="image" src="https://github.com/user-attachments/assets/adbc4289-ed46-43fe-a306-3d3b59d4e00d" />
+
+
+
+
+
 
 > **Give AI the runbook. Let it execute the safe steps. Make it ask before anything destructive.**
 
@@ -22,6 +30,8 @@ WASPID lets an agent execute runbooks against real Docker infrastructure with sa
 - Rejection means **STOP RUNBOOK** — the engine halts and marks remaining steps stopped.
 - Everything is written to an append-only JSONL audit log.
 
+
+<img width="2940" height="1598" alt="image" src="https://github.com/user-attachments/assets/39032dd4-ea3f-492e-b27a-db3508925fd3" />
 ## Architecture
 
 ```
