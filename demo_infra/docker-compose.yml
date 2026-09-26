@@ -1,0 +1,56 @@
+services:
+  waspid-api:
+    build: ./api
+    container_name: waspid-api
+    image: waspid/api:1.4.2
+    init: true
+    environment:
+      WASPID_VERSION: "1.4.2"
+    ports:
+      - "127.0.0.1:8080:8080"
+    labels:
+      waspid.version: "1.4.2"
+      waspid.role: "api"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+      start_interval: 1s
+
+  waspid-worker:
+    build: ./worker
+    container_name: waspid-worker
+    image: waspid/worker:1.4.2
+    init: true
+    labels:
+      waspid.version: "1.4.2"
+      waspid.role: "worker"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,time,sys; st=os.stat('/tmp/heartbeat'); sys.exit(0 if time.time()-st.st_mtime < 20 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+      start_interval: 1s
+
+  waspid-db:
+    image: postgres:16-alpine
+    container_name: waspid-db
+    environment:
+      POSTGRES_PASSWORD: ${WASPID_DB_PASSWORD:?set WASPID_DB_PASSWORD in your environment}
+      POSTGRES_USER: waspid
+      POSTGRES_DB: waspid
+    labels:
+      waspid.version: "1.4.2"
+      waspid.role: "db"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waspid -d waspid"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

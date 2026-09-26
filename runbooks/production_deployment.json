@@ -1,0 +1,17 @@
+{
+  "name": "Production Deployment",
+  "steps": [
+    {"id": "inspect", "description": "Inspect current infrastructure", "action": "list_containers", "risk": "read_only"},
+    {"id": "health", "description": "Check application health", "action": "container_health", "target": "waspid-api", "risk": "read_only", "verify": {"expect_health": "healthy"}},
+    {"id": "version", "description": "Inspect latest application version", "action": "inspect_container", "target": "waspid-api", "risk": "read_only"},
+    {"id": "validate", "description": "Generate and run validation tests in sandbox", "action": "run_sandbox", "risk": "safe",
+     "params": {"image": "python:3.12-slim", "command": ["python", "validate_release.py"],
+       "files": {"validate_release.py": "import sys\nchecks = {\"config schema\": True, \"migration dry-run\": True, \"smoke assertions\": True}\nfor name, ok in checks.items():\n    print((\"PASS\" if ok else \"FAIL\"), name)\nsys.exit(0 if all(checks.values()) else 1)\n"}}},
+    {"id": "build", "description": "Build the application in sandbox", "action": "run_sandbox", "risk": "safe",
+     "params": {"image": "python:3.12-slim", "command": ["python", "build.py"],
+       "files": {"build.py": "print(\"building waspid-api 1.4.3 ... done\")\n"}}},
+    {"id": "restart", "description": "Restart production container (current container stops and restarts)", "action": "restart_container", "target": "waspid-api", "risk": "destructive", "requires_approval": true, "verify": {"expect_health": "healthy"}},
+    {"id": "verify", "description": "Verify production health after restart", "action": "container_health", "target": "waspid-api", "risk": "read_only", "verify": {"expect_health": "healthy"}},
+    {"id": "cleanup", "description": "Remove obsolete image waspid/api:1.4.1", "action": "remove_image", "target": "waspid/api:1.4.1", "risk": "destructive", "requires_approval": true}
+  ]
+}

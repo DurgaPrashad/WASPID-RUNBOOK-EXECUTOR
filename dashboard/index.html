@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WASPID Operator Console</title>
+<meta name="description" content="Live operator console for the WASPID runbook executor: human-approved destructive actions against real Docker infrastructure.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l12 7v14l-12 7-12-7V9z' fill='%23f5c542'/%3E%3Cpath d='M10 12l3 9 3-6 3 6 3-9' fill='none' stroke='%230b0e14' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0a0d13;--surface:#10151e;--surface-2:#151c27;--surface-3:#1b2331;
+  --border:#212a38;--border-2:#2b3647;
+  --text:#e6ecf5;--text-2:#b3bfd0;--muted:#7c89a0;--faint:#566178;
+  --brand:#f5c542;--primary:#4f8cff;--primary-h:#3f7bea;
+  --ok:#34d399;--ok-bg:rgba(52,211,153,.13);
+  --warn:#fbbf24;--warn-bg:rgba(251,191,36,.13);
+  --danger:#f87171;--danger-bg:rgba(248,113,113,.13);
+  --info:#60a5fa;--info-bg:rgba(96,165,250,.13);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,.15);
+  --code-bg:#0c1118;
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 30px -12px rgba(0,0,0,.55);
+  --r:14px;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  color-scheme:dark;
+}
+:root[data-theme=light]{
+  --bg:#f3f5f9;--surface:#ffffff;--surface-2:#f6f8fb;--surface-3:#edf1f7;
+  --border:#e1e6ee;--border-2:#cfd7e3;
+  --text:#0f1726;--text-2:#344256;--muted:#627089;--faint:#94a0b4;
+  --primary:#2f6fed;--primary-h:#245fd6;
+  --ok:#0f9f6e;--ok-bg:rgba(16,159,110,.11);
+  --warn:#b7791f;--warn-bg:rgba(217,152,20,.14);
+  --danger:#dc3f3f;--danger-bg:rgba(220,63,63,.1);
+  --info:#2f6fed;--info-bg:rgba(47,111,237,.1);
+  --violet:#7c5ce0;--violet-bg:rgba(124,92,224,.11);
+  --code-bg:#f6f8fb;
+  --shadow:0 1px 2px rgba(15,23,38,.04),0 8px 24px -14px rgba(15,23,38,.18);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+body::before{content:"";position:fixed;inset:0 0 auto 0;height:340px;pointer-events:none;z-index:-1;
+  background:radial-gradient(900px 260px at 12% -40px,rgba(79,140,255,.10),transparent 70%),radial-gradient(700px 240px at 88% -60px,rgba(245,197,66,.07),transparent 70%)}
+code,pre,.mono{font-family:var(--mono)}
+code{font-size:.92em}
+button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--border-2);background:var(--surface-2);border-radius:10px;padding:8px 14px;display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:13px;transition:background .15s,border-color .15s,transform .05s,opacity .15s}
+button:hover:not(:disabled){background:var(--surface-3)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.42;cursor:not-allowed}
+button.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+button.primary:hover:not(:disabled){background:var(--primary-h)}
+button.ghost{background:transparent}
+button svg{width:15px;height:15px;flex-shrink:0}
+.label{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.wrap{max-width:1640px;margin:0 auto;padding:0 20px}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--border)}
+.topbar .wrap{display:flex;align-items:center;gap:14px;height:62px}
+.brand{display:flex;align-items:center;gap:11px;flex-shrink:0}
+.brand svg{width:30px;height:30px}
+.brand-name{font-weight:800;letter-spacing:.14em;font-size:15px;line-height:1.1}
+.brand-sub{color:var(--muted);font-size:11.5px;letter-spacing:.04em}
+.divider{width:1px;height:28px;background:var(--border)}
+.rb{display:flex;flex-direction:column;min-width:0}
+.rb-name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-file{color:var(--muted);font:12px var(--mono)}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface);white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.pill.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:var(--ok-bg)}
+.pill.ok .dot{background:var(--ok);box-shadow:0 0 0 0 var(--ok);animation:pulse 2s infinite}
+.pill.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent);background:var(--warn-bg)}
+.pill.warn .dot{background:var(--warn)}
+.pill.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,transparent);background:var(--danger-bg)}
+.pill.danger .dot{background:var(--danger)}
+.pill.muted{color:var(--muted)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 60%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.icon-btn{padding:7px;border-radius:9px;background:transparent}
+.icon-btn svg{width:17px;height:17px}
+.auth-btn .av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--primary);color:#fff;font-size:11px;font-weight:800}
+
+/* run bar */
+.runbar{margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center}
+.run-meta{display:flex;align-items:center;gap:18px;min-width:0}
+.status{display:inline-flex;align-items:center;gap:9px;padding:8px 14px;border-radius:11px;font-weight:700;font-size:14px;background:var(--surface-3);border:1px solid var(--border-2);white-space:nowrap}
+.status svg{width:16px;height:16px}
+.status.running{color:var(--info);background:var(--info-bg);border-color:color-mix(in srgb,var(--info) 35%,transparent)}
+.status.waiting_for_approval{color:var(--warn);background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.status.completed{color:var(--ok);background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.status.rejected,.status.failed,.status.stopped{color:var(--danger);background:var(--danger-bg);border-color:color-mix(in srgb,var(--danger) 35%,transparent)}
+.kv{display:flex;flex-direction:column;gap:1px;min-width:0}
+.kv .v{font:600 13.5px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progress{display:flex;flex-direction:column;gap:7px;min-width:0}
+.progress-head{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-2)}
+.segs{display:grid;gap:4px;grid-auto-flow:column;grid-auto-columns:1fr}
+.seg{height:8px;border-radius:4px;background:var(--surface-3);position:relative;overflow:hidden}
+.seg.successful{background:var(--ok)}
+.seg.running{background:var(--info)}
+.seg.running::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);animation:shimmer 1.1s infinite}
+.seg.waiting_for_approval{background:var(--warn);animation:blink 1.4s ease-in-out infinite}
+.seg.failed,.seg.rejected{background:var(--danger)}
+.seg.stopped{background:repeating-linear-gradient(45deg,var(--surface-3),var(--surface-3) 3px,color-mix(in srgb,var(--danger) 30%,transparent) 3px,color-mix(in srgb,var(--danger) 30%,transparent) 6px)}
+@keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@keyframes blink{50%{opacity:.45}}
+.actions{display:flex;gap:10px}
+
+/* notices */
+.notices{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.notices:empty{display:none}
+.notice{display:flex;align-items:center;gap:11px;padding:11px 15px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:13.5px}
+.notice svg{width:17px;height:17px;flex-shrink:0}
+.notice.ok{border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:var(--ok-bg)}
+.notice.ok>svg{color:var(--ok)}
+.notice.danger{border-color:color-mix(in srgb,var(--danger) 35%,transparent);background:var(--danger-bg)}
+.notice.danger>svg{color:var(--danger)}
+.notice.info>svg{color:var(--info)}
+.notice .grow{flex:1;min-width:0}
+.notice a,.linkish{color:var(--primary);text-decoration:none;font-weight:600;cursor:pointer;background:none;border:0;padding:0;font-size:inherit}
+.notice a:hover,.linkish:hover{text-decoration:underline}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:14px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;box-shadow:var(--shadow);min-width:0}
+.kpi .val{font:700 24px/1.2 var(--sans);letter-spacing:-.01em;margin-top:4px;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:8px}
+.kpi .val small{font-size:14px;color:var(--muted);font-weight:600}
+.kpi .sub{color:var(--muted);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .val .g{color:var(--ok)} .kpi .val .r{color:var(--danger)}
+
+/* approval */
+.approval{margin-top:14px;border-radius:16px;padding:18px 20px;border:1.5px solid color-mix(in srgb,var(--warn) 55%,transparent);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--warn) 13%,var(--surface)),var(--surface) 60%);box-shadow:0 0 0 4px color-mix(in srgb,var(--warn) 9%,transparent),var(--shadow);animation:glow 2.4s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--warn) 4%,transparent),var(--shadow)}}
+.ap-head{display:flex;align-items:flex-start;gap:14px}
+.ap-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--warn-bg);color:var(--warn);flex-shrink:0}
+.ap-icon svg{width:22px;height:22px}
+.ap-title{font-weight:800;font-size:16px;color:var(--warn);letter-spacing:.02em}
+.ap-sub{color:var(--text-2);font-size:13px}
+.ap-wait{margin-left:auto;text-align:right;white-space:nowrap}
+.ap-wait b{font:700 18px var(--mono);display:block}
+.ap-action{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 12px;font-size:19px;font-weight:700}
+.ap-action code{background:var(--danger-bg);color:var(--danger);padding:3px 10px;border-radius:8px}
+.ap-action .arrow{color:var(--muted)}
+.ap-target{font-family:var(--mono)}
+.ap-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 18px;margin:0}
+.ap-grid div{min-width:0}
+.ap-grid dt{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.ap-grid dd{margin:2px 0 0;font-size:13.5px}
+.ap-foot{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+.ap-token{color:var(--muted);font-size:12.5px;flex:1;min-width:260px}
+.ap-token code{color:var(--text-2)}
+.ap-actions{display:flex;gap:10px}
+.ap-actions button{padding:11px 20px;font-size:14px}
+button.reject{background:var(--danger-bg);border-color:color-mix(in srgb,var(--danger) 50%,transparent);color:var(--danger)}
+button.reject:hover:not(:disabled){background:color-mix(in srgb,var(--danger) 22%,transparent)}
+button.approve{background:var(--ok);border-color:var(--ok);color:#06281c}
+:root[data-theme=light] button.approve{color:#fff}
+button.approve:hover:not(:disabled){background:var(--ok);filter:brightness(1.08)}
+.ap-viewer{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px}
+
+/* main grid */
+.grid{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr) minmax(300px,390px);gap:14px;margin:14px auto 18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);min-height:50px}
+.card-h h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.02em}
+.card-h .count{color:var(--muted);font-size:12px;font-weight:600}
+.card-h .grow{flex:1}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* pipeline */
+.steps{list-style:none;margin:0;padding:10px}
+.step{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:9px 10px;border-radius:11px;cursor:pointer;position:relative}
+.step:hover{background:var(--surface-2)}
+.step.sel{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--border-2)}
+.rail{position:relative;display:flex;justify-content:center}
+.step:not(:last-child) .rail::after{content:"";position:absolute;top:30px;bottom:-22px;left:50%;width:2px;margin-left:-1px;background:var(--border-2);border-radius:2px}
+.step.s-successful:not(:last-child) .rail::after{background:color-mix(in srgb,var(--ok) 55%,var(--border-2))}
+.node{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--border-2);background:var(--surface);color:var(--faint);position:relative;z-index:1}
+.node svg{width:14px;height:14px}
+.s-successful .node{background:var(--ok);border-color:var(--ok);color:#052e1f}
+.s-running .node{border-color:var(--info);color:var(--info)}
+.s-waiting_for_approval .node{background:var(--warn);border-color:var(--warn);color:#2d1d00;animation:pulse 1.6s infinite}
+.s-failed .node,.s-rejected .node{background:var(--danger);border-color:var(--danger);color:#fff}
+.s-stopped .node{border-style:dashed;border-color:color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger)}
+.s-stopped .sb,.s-planned .sb{opacity:.72}
+.spin{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.st{display:flex;align-items:center;gap:8px;min-width:0}
+.sid{font-weight:700;font-family:var(--mono);font-size:13px}
+.dur{margin-left:auto;color:var(--muted);font:12px var(--mono);white-space:nowrap}
+.sd{color:var(--text-2);font-size:13px;margin-top:1px}
+.sm{color:var(--muted);font-size:12px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.sm code{color:var(--text-2)}
+.lock{display:inline-flex;align-items:center;gap:3px;color:var(--warn);font-weight:600}
+.lock svg{width:11px;height:11px}
+.badge{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;flex-shrink:0}
+.risk-read_only{background:var(--info-bg);color:var(--info)}
+.risk-safe{background:var(--violet-bg);color:var(--violet)}
+.risk-destructive{background:var(--danger-bg);color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:1px 9px;border-radius:7px;font-size:11.5px;font-weight:650;white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.danger{background:var(--danger-bg);color:var(--danger)} .chip.info{background:var(--info-bg);color:var(--info)}
+.chip.violet{background:var(--violet-bg);color:var(--violet)} .chip.muted{background:var(--surface-3);color:var(--muted)}
+
+/* tabs */
+.tabs{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{background:transparent;border:0;color:var(--muted);padding:7px 12px;border-radius:9px;font-weight:650}
+.tab:hover:not(:disabled){background:var(--surface-2);color:var(--text)}
+.tab.on{background:var(--surface-3);color:var(--text)}
+.tab .n{background:var(--surface-3);color:var(--muted);border-radius:999px;padding:0 7px;font-size:11px}
+.tab.on .n{background:var(--primary);color:#fff}
+.pane{flex:1;min-height:0;display:flex;flex-direction:column}
+.scroll{overflow:auto;flex:1;min-height:0}
+.center{height:calc(100vh - 380px);min-height:560px}
+
+/* activity */
+.feed{padding:6px 8px}
+.evt{display:grid;grid-template-columns:70px 78px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 8px;border-radius:9px;font-size:13px;animation:fadein .35s ease}
+.evt:hover{background:var(--surface-2)}
+.evt .t{color:var(--muted);font:12px var(--mono)}
+.evt .es{font:600 12.5px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evt .ea{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-2)}
+.evt .extra{grid-column:3/-1;color:var(--muted);font-size:12px;margin-top:-4px}
+.evt .extra.bad{color:var(--danger)}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:48px 20px;color:var(--muted);height:100%}
+.empty svg{width:34px;height:34px;opacity:.6;margin-bottom:6px}
+.empty b{color:var(--text-2);font-size:14px}
+
+/* detail */
+.detail{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.d-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.d-head h3{margin:0;font:700 17px var(--mono)}
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.fact{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;min-width:0}
+.fact .v{font:600 13px var(--mono);margin-top:2px;word-break:break-all}
+.term{background:var(--code-bg);border:1px solid var(--border);border-radius:11px;overflow:hidden}
+.term-h{display:flex;align-items:center;gap:7px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
+.term-h i{width:9px;height:9px;border-radius:50%;background:var(--border-2);display:inline-block}
+.term-h span{margin-left:6px}
+pre{margin:0;padding:12px 14px;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;color:var(--text-2)}
+.j-k{color:var(--info)} .j-s{color:var(--ok)} .j-n{color:var(--warn)} .j-b{color:var(--violet)}
+.y-k{color:var(--info)} .y-c{color:var(--faint)} .y-danger{background:var(--danger-bg);display:inline-block;width:100%;border-radius:4px} .y-warn{background:var(--warn-bg);display:inline-block;width:100%;border-radius:4px}
+.follow{margin-left:auto}
+
+/* history */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-size:11px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+td.mono{font-size:12.5px}
+tr.cur td{background:var(--surface-2)}
+
+/* containers */
+.ctrs{padding:8px}
+.ctr{padding:11px 12px;border-radius:11px;border:1px solid transparent;cursor:pointer}
+.ctr:hover{background:var(--surface-2)}
+.ctr.sel{border-color:var(--border-2);background:var(--surface-2)}
+.ctr-top{display:flex;align-items:center;gap:9px}
+.hdot{width:10px;height:10px;border-radius:50%;background:var(--faint);flex-shrink:0}
+.hdot.healthy{background:var(--ok);box-shadow:0 0 0 3px var(--ok-bg)}
+.hdot.starting{background:var(--warn);box-shadow:0 0 0 3px var(--warn-bg);animation:blink 1s infinite}
+.hdot.unhealthy,.hdot.down{background:var(--danger);box-shadow:0 0 0 3px var(--danger-bg)}
+.hdot.sandbox{background:var(--violet);box-shadow:0 0 0 3px var(--violet-bg)}
+.ctr-name{font:650 13.5px var(--mono);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctr-top .chip{margin-left:auto}
+.ctr-sub{color:var(--muted);font-size:12px;margin:3px 0 0 19px;display:flex;gap:6px;flex-wrap:wrap}
+.ctr-sub .mono{color:var(--text-2)}
+.ctr-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:9px 0 0 19px}
+.mstat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mstat .row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.mstat .row b{font:600 12px var(--mono);color:var(--text);letter-spacing:0}
+.spark{width:100%;height:26px;display:block}
+.spark .ln{fill:none;stroke-width:1.6}
+.spark .ar{opacity:.16}
+.cpu .ln{stroke:var(--info)} .cpu .ar{fill:var(--info)}
+.mem .ln{stroke:var(--violet)} .mem .ar{fill:var(--violet)}
+
+/* logs */
+.logs-card{min-height:280px;max-height:430px}
+.logs-card select{font:inherit;font-size:12.5px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-2);border-radius:8px;padding:5px 8px;max-width:170px}
+#logs{font-size:11.8px;line-height:1.5;color:var(--text-2);padding:10px 14px;min-height:100%}
+.small-btn{padding:5px 9px;font-size:12px;border-radius:8px}
+
+.foot{color:var(--faint);font-size:12px;text-align:center;padding:4px 0 26px}
+.foot b{color:var(--muted);font-weight:600}
+
+/* dialog + toasts */
+dialog{border:1px solid var(--border-2);border-radius:16px;background:var(--surface);color:var(--text);padding:0;width:min(420px,calc(100vw - 32px));box-shadow:0 30px 80px -20px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(5,8,13,.6);backdrop-filter:blur(3px)}
+.dlg{padding:22px;display:flex;flex-direction:column;gap:14px}
+.dlg h3{margin:0;font-size:17px}
+.dlg p{margin:0;color:var(--text-2);font-size:13.5px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input{font:inherit;font-size:14px;background:var(--surface-2);color:var(--text);border:1px solid var(--border-2);border-radius:10px;padding:10px 12px;outline:none}
+.field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 25%,transparent)}
+.dlg-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
+.err{color:var(--danger);font-size:13px}
+#toasts{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px;z-index:50}
+.toast{background:var(--surface-3);border:1px solid var(--border-2);border-left:4px solid var(--info);border-radius:11px;padding:11px 15px;box-shadow:0 18px 40px -16px rgba(0,0,0,.6);font-size:13.5px;max-width:380px;animation:fadein .25s ease}
+.toast.danger{border-left-color:var(--danger)} .toast.ok{border-left-color:var(--ok)}
+
+@media (max-width:1320px){
+  .grid{grid-template-columns:minmax(290px,360px) minmax(0,1fr)}
+  .side{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ap-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:860px){
+  .wrap{padding:0 12px}
+  .topbar .wrap{height:auto;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+  .divider,.rb{display:none}
+  .runbar{grid-template-columns:1fr;gap:14px}
+  .run-meta{flex-wrap:wrap}
+  .grid,.side{grid-template-columns:1fr}
+  .center{height:auto;min-height:480px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ap-grid{grid-template-columns:1fr}
+  .evt{grid-template-columns:62px minmax(0,1fr) auto}
+  .evt .es,.evt .badge{display:none}
+  .evt .extra{grid-column:2/-1}
+  #modePill .long{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l12 7v14l-12 7-12-7V9z" fill="var(--brand)"/><path d="M10 12l3 9 3-6 3 6 3-9" fill="none" stroke="#0b0e14" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <div><div class="brand-name">WASPID</div><div class="brand-sub">Runbook Executor</div></div>
+    </div>
+    <span class="divider"></span>
+    <div class="rb"><span class="rb-name" id="rbName">—</span><span class="rb-file" id="rbFile"></span></div>
+    <span class="spacer"></span>
+    <span class="pill muted" id="modePill"><span class="dot"></span><span>connecting…</span></span>
+    <span class="pill muted" id="connPill" title="Live update channel"><span class="dot"></span><span>connecting</span></span>
+    <button class="ghost auth-btn" id="authBtn"></button>
+    <button class="icon-btn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle theme"></button>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="runbar">
+    <div class="run-meta">
+      <span class="status" id="statusPill"></span>
+      <div class="kv"><span class="label">Run</span><span class="v" id="runId">—</span></div>
+      <div class="kv"><span class="label">Elapsed</span><span class="v" id="elapsed">—</span></div>
+    </div>
+    <div class="progress">
+      <div class="progress-head"><span id="progText">—</span><span id="progPct"></span></div>
+      <div class="segs" id="segs"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="startBtn"></button>
+      <button id="resetBtn"></button>
+    </div>
+  </section>
+
+  <div class="notices" id="notices"></div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="approval" id="approval" hidden aria-live="assertive">
+    <div class="ap-head">
+      <div class="ap-icon" id="apIcon"></div>
+      <div>
+        <div class="ap-title">Approval required · destructive action</div>
+        <div class="ap-sub">The tool layer blocked this call. Nothing runs until a human decides.</div>
+      </div>
+      <div class="ap-wait"><span class="label">Waiting</span><b id="apWait">0:00</b></div>
+    </div>
+    <div class="ap-action"><code id="apAction"></code><span class="arrow">→</span><span class="ap-target" id="apTarget"></span></div>
+    <dl class="ap-grid">
+      <div><dt>Reason</dt><dd id="apReason"></dd></div>
+      <div><dt>Risk</dt><dd id="apRisk"></dd></div>
+      <div><dt>Expected effect</dt><dd id="apEffect"></dd></div>
+      <div><dt>Next step</dt><dd id="apNext"></dd></div>
+    </dl>
+    <div class="ap-foot">
+      <div class="ap-token" id="apToken"></div>
+      <div class="ap-actions" id="apActions">
+        <button class="reject" id="rejectBtn"></button>
+        <button class="approve" id="approveBtn"></button>
+      </div>
+      <div class="ap-viewer" id="apViewer" hidden></div>
+    </div>
+  </section>
+
+  <main class="grid">
+    <section class="card">
+      <div class="card-h"><h2>Runbook pipeline</h2><span class="grow"></span><span class="count" id="stepCount"></span></div>
+      <ol class="steps" id="steps"></ol>
+    </section>
+
+    <section class="card center">
+      <nav class="tabs" id="tabs">
+        <button class="tab on" data-tab="activity">Activity <span class="n" id="nEvents">0</span></button>
+        <button class="tab" data-tab="detail">Step detail</button>
+        <button class="tab" data-tab="runbook">Runbook</button>
+        <button class="tab" data-tab="history">Run history</button>
+      </nav>
+      <div class="pane" data-pane="activity"><div class="scroll" id="feedScroll"><div class="feed" id="feed"></div></div></div>
+      <div class="pane" data-pane="detail" hidden><div class="scroll"><div class="detail" id="detail"></div></div></div>
+      <div class="pane" data-pane="runbook" hidden><div class="scroll"><pre id="rbSource"></pre></div></div>
+      <div class="pane" data-pane="history" hidden><div class="scroll" id="history"></div></div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <div class="card-h"><h2>Containers</h2><span class="grow"></span><span class="count" id="ctrCount"></span></div>
+        <div class="ctrs" id="ctrs"></div>
+      </section>
+      <section class="card logs-card">
+        <div class="card-h">
+          <h2>Logs</h2><span class="grow"></span>
+          <select id="logSel" aria-label="Container logs"></select>
+          <button class="small-btn" id="logPause" title="Pause / resume"></button>
+        </div>
+        <div class="scroll" id="logScroll"><pre id="logs">Select a container…</pre></div>
+      </section>
+    </aside>
+  </main>
+  <div class="foot"><b>WASPID</b> · safety enforced in code, not in the prompt · approval tokens are single-use and bound to one action + target · every transition is audited</div>
+</div>
+
+<dialog id="authDlg">
+  <div class="dlg" id="authBody"></div>
+</dialog>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const I = {
+  check: '<svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  x: '<svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  bang: '<svg viewBox="0 0 16 16"><path d="M8 3.5v5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="8" cy="12.3" r="1.3" fill="currentColor"/></svg>',
+  dash: '<svg viewBox="0 0 16 16"><path d="M4.5 8h7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  lock: '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.6 7V5.3a2.4 2.4 0 014.8 0V7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  play: '<svg viewBox="0 0 16 16"><path d="M5 3.5v9l7.5-4.5z" fill="currentColor"/></svg>',
+  reset: '<svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 105-5H5.5M5.5 1.2V5H9.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 3.2L2.3 20h19.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 9.5v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.25" fill="currentColor"/></svg>',
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 2.8l8 3v6.1c0 4.7-3.3 8.3-8 9.6-4.7-1.3-8-4.9-8-9.6V5.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 12l2.4 2.4 4.6-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.8" r="1.2" fill="currentColor"/></svg>',
+  stop: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+  eye: '<svg viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>',
+  pause: '<svg viewBox="0 0 16 16"><path d="M5.5 3.5v9m5-9v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  box: '<svg viewBox="0 0 24 24"><path d="M12 2.8l8.5 4.6v9.2L12 21.2l-8.5-4.6V7.4z M3.5 7.4L12 12l8.5-4.6M12 12v9.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  pulse: '<svg viewBox="0 0 24 24"><path d="M2.5 12h4l2.5-6 4 12 2.5-6h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
+// ---------- state ----------
+let S = null, offset = 0;
+let token = store.get("waspid.token");
+let opName = store.get("waspid.name") || "";
+let isOperator = false;
+let selectedStep = null, followLive = true;
+let activeTab = "activity";
+let logContainer = null, logsPaused = false;
+let lastRunStatus = null, busyAction = false;
+const keys = {};
+const changed = (name, val) => { const k = JSON.stringify(val); if (keys[name] === k) return false; keys[name] = k; return true; };
+
+// ---------- formatting ----------
+const now = () => Date.now() / 1000 + offset;
+function fmtDur(sec, style) {
+  if (sec == null || !isFinite(sec)) return "—";
+  sec = Math.max(0, sec);
+  if (style === "clock") {
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = Math.floor(sec % 60);
+    return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0");
+  }
+  if (style === "step") return sec < 10 ? sec.toFixed(1) + "s" : fmtDur(sec);
+  if (sec < 60) return Math.floor(sec) + "s";
+  if (sec < 3600) return Math.floor(sec / 60) + "m " + Math.floor(sec % 60) + "s";
+  if (sec < 86400) return Math.floor(sec / 3600) + "h " + Math.floor(sec % 3600 / 60) + "m";
+  return Math.floor(sec / 86400) + "d " + Math.floor(sec % 86400 / 3600) + "h";
+}
+const fmtBytes = b => !b ? "—" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : b < 1073741824 ? (b / 1048576).toFixed(1) + " MB" : (b / 1073741824).toFixed(2) + " GB";
+const clock = ts => { const d = new Date(ts); return isNaN(d) ? esc(ts) : d.toLocaleTimeString([], {hour12: false}); };
+const riskLabel = r => ({read_only: "read-only", safe: "sandboxed", destructive: "destructive"}[r] || r);
+const riskBadge = r => `<span class="badge risk-${esc(r)}">${esc(riskLabel(r))}</span>`;
+const STATUS = {
+  idle: ["Ready", '<span class="hdot" style="width:9px;height:9px;background:var(--faint)"></span>'], running: ["Running", '<span class="spin"></span>'],
+  waiting_for_approval: ["Awaiting approval", I.bang], completed: ["Completed", I.check],
+  rejected: ["Stopped · rejected", I.x], failed: ["Failed · halted", I.x], stopped: ["Stopped", I.dash],
+};
+const NODE = { successful: I.check, running: '<span class="spin"></span>', waiting_for_approval: I.bang,
+  failed: I.x, rejected: I.x, stopped: I.dash, planned: "" };
+const STEP_CHIP = { successful: ["ok", "successful"], running: ["info", "running"], waiting_for_approval: ["warn", "awaiting approval"],
+  failed: ["danger", "failed"], rejected: ["danger", "rejected"], stopped: ["muted", "stopped"], planned: ["muted", "planned"] };
+const RESULT = { success: ["ok", "success"], failed: ["danger", "failed"], halted: ["warn", "halted · needs approval"],
+  approval_granted: ["ok", "approved"], "STOP RUNBOOK": ["danger", "STOP RUNBOOK"] };
+
+function hlJSON(v) {
+  const s = esc(typeof v === "string" ? v : JSON.stringify(v, null, 2));
+  return s.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false|null)\b|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g,
+    (m, str, colon, kw) => str ? (colon ? `<span class="j-k">${str}</span>${colon}` : `<span class="j-s">${str}</span>`)
+      : kw ? `<span class="j-b">${m}</span>` : `<span class="j-n">${m}</span>`);
+}
+function hlYAML(src) {
+  return src.split("\n").map(line => {
+    let l = esc(line);
+    if (/^\s*#/.test(line)) return `<span class="y-c">${l}</span>`;
+    l = l.replace(/^(\s*-?\s*)([\w.-]+)(:)(?=\s|$)/, '$1<span class="y-k">$2</span>$3');
+    if (/risk:\s*destructive/.test(line)) return `<span class="y-danger">${l}</span>`;
+    if (/requires_approval:\s*true/.test(line)) return `<span class="y-warn">${l}</span>`;
+    return l;
+  }).join("\n");
+}
+// zeroBased: scale 0..max (CPU). Otherwise scale min..max so small drifts stay visible (memory).
+function spark(values, cls, floor, zeroBased) {
+  if (!values || values.length < 2) return `<svg class="spark ${cls}" viewBox="0 0 100 26" preserveAspectRatio="none"></svg>`;
+  const n = values.length;
+  let lo = zeroBased ? 0 : Math.min(...values), hi = Math.max(...values);
+  if (hi - lo < floor) { const mid = zeroBased ? floor / 2 : (hi + lo) / 2; lo = Math.max(0, mid - floor / 2); hi = lo + floor; }
+  const pts = values.map((v, i) => [(i / (n - 1)) * 100, 24 - ((v - lo) / (hi - lo)) * 21]);
+  const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  return `<svg class="spark ${cls}" viewBox="0 0 100 26" preserveAspectRatio="none"><path class="ar" d="${line} L100 26 L0 26Z"/><path class="ln" d="${line}" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function toast(msg, kind = "info") {
+  const el = document.createElement("div");
+  el.className = "toast " + kind; el.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+
+// ---------- API ----------
+async function api(path, body) {
+  busyAction = true; render();
+  try {
+    const r = await fetch(path, { method: "POST", headers: {
+      "Content-Type": "application/json", "X-Operator-Token": token || "", "X-Operator-Name": opName || "" },
+      body: JSON.stringify(body || {}) });
+    let data = {}; try { data = await r.json(); } catch {}
+    if (!r.ok || data.ok === false) {
+      toast(data.error || `Request failed (${r.status})`, "danger");
+      if (r.status === 401) setOperator(false);
+      return false;
+    }
+    return true;
+  } catch (e) { toast("Network error — " + e.message, "danger"); return false; }
+  finally { busyAction = false; if (!es) poll(); else render(); }
+}
+async function verifyToken() {
+  if (!token) return setOperator(false);
+  try {
+    const r = await fetch("/api/auth", { method: "POST", headers: { "X-Operator-Token": token } });
+    setOperator(r.ok);
+    if (!r.ok) { store.set("waspid.token", null); token = null; }
+  } catch { setOperator(false); }
+}
+function setOperator(v) { isOperator = v; renderAuth(); render(); }
+
+// ---------- live channel ----------
+let es = null, pollTimer = null, esFailures = 0;
+function setConn(kind) {
+  const p = $("#connPill");
+  const [cls, text] = { live: ["ok", "Live"], polling: ["warn", "Polling"], reconnecting: ["warn", "Reconnecting…"], down: ["danger", "Offline"] }[kind];
+  p.className = "pill " + cls; p.querySelector("span:last-child").textContent = text;
+}
+function connect() {
+  if (!window.EventSource) return startPolling();
+  es = new EventSource("/api/stream");
+  es.addEventListener("state", e => { esFailures = 0; setConn("live"); apply(JSON.parse(e.data)); });
+  es.onerror = () => {
+    esFailures++; setConn("reconnecting");
+    if (esFailures > 3) { es.close(); es = null; startPolling(); setTimeout(() => { stopPolling(); connect(); }, 30000); }
+  };
+}
+async function poll() {
+  try { const r = await fetch("/api/state", { cache: "no-store" }); apply(await r.json()); if (!es) setConn("polling"); }
+  catch { setConn("down"); }
+}
+function startPolling() { if (!pollTimer) { poll(); pollTimer = setInterval(poll, 1500); } }
+function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
+
+// ---------- render ----------
+function apply(s) {
+  S = s; offset = s.server_time - Date.now() / 1000;
+  render();
+  const st = s.run.status;
+  if (st !== lastRunStatus) {
+    if (["completed", "rejected", "failed"].includes(st) || lastRunStatus === null) loadHistory();
+    lastRunStatus = st;
+  }
+}
+function render() {
+  if (!S) return;
+  renderHeader(); renderRunbar(); renderNotices(); renderKPIs(); renderApproval();
+  renderSteps(); renderActivity(); renderDetail(); renderContainers(); tick();
+}
+
+function renderHeader() {
+  if (!changed("header", [S.mode, S.engine, S.runbook])) return;
+  $("#rbName").textContent = S.runbook.name;
+  $("#rbFile").textContent = "runbooks/" + S.runbook.file;
+  const m = $("#modePill");
+  if (S.mode === "live") {
+    m.className = "pill ok";
+    m.innerHTML = `<span class="dot"></span><span>LIVE<span class="long"> · Docker ${esc(S.engine.version || "")}${S.engine.arch ? " · " + esc(S.engine.os + "/" + S.engine.arch) : ""}</span></span>`;
+    m.title = "Every tool call hits the real Docker Engine";
+  } else {
+    m.className = "pill warn";
+    m.innerHTML = `<span class="dot"></span><span>SIMULATED<span class="long"> engine</span></span>`;
+    m.title = "Running against the in-memory fake Docker engine (WASPID_FAKE_DOCKER=1)";
+  }
+}
+
+function renderRunbar() {
+  const r = S.run, tl = S.timeline;
+  if (changed("runbar", [r, tl.map(t => t.status), isOperator, busyAction, S.preparing])) {
+    const [label, icon] = STATUS[r.status] || [r.status, ""];
+    const sp = $("#statusPill"); sp.className = "status " + r.status; sp.innerHTML = icon + esc(label);
+    $("#runId").textContent = r.id || "not started";
+    $("#runId").title = r.id || "";
+    const done = tl.filter(t => t.status === "successful").length;
+    $("#progText").textContent = `${done} of ${tl.length} steps verified`;
+    $("#progPct").textContent = Math.round(done / tl.length * 100) + "%";
+    $("#segs").innerHTML = tl.map(t => `<div class="seg ${t.status}" title="${esc(t.id)} · ${esc(t.status)}"></div>`).join("");
+    const sb = $("#startBtn"), rb = $("#resetBtn");
+    sb.innerHTML = I.play + "Start run"; rb.innerHTML = I.reset + "Reset";
+    sb.disabled = !isOperator || busyAction || r.busy || r.status !== "idle" || !!S.preparing;
+    rb.disabled = !isOperator || busyAction || r.busy;
+    sb.title = !isOperator ? "Sign in as operator to start a run" : r.status !== "idle" ? "Reset to start a new run" : "Execute the runbook";
+    rb.title = !isOperator ? "Sign in as operator" : "Start over with a fresh run (a pending approval is rejected)";
+  }
+}
+
+function renderNotices() {
+  const out = [], r = S.run;
+  if (S.docker_error) out.push(["danger", I.stop, `<b>Docker unreachable.</b> ${esc(S.docker_error)}`]);
+  if (S.preparing) out.push(["info", '<span class="spin" style="color:var(--info)"></span>', `Preparing environment — ${esc(S.preparing)}…`]);
+  if (r.status === "completed") {
+    out.push(["ok", I.shield, `<span class="grow"><b>Runbook completed.</b> Every step executed in order and was independently verified${S.mode === "live" ? " against live Docker" : ""}.</span><a href="/api/runs/${esc(r.id)}.jsonl" download>Download audit log</a>`]);
+  } else if (r.status === "rejected") {
+    const ev = [...S.audit].reverse().find(e => e.result === "STOP RUNBOOK");
+    const who = ev && ev.detail && ev.detail.decided_by ? esc(ev.detail.decided_by) : "The operator";
+    const stopped = S.timeline.filter(t => t.status === "stopped").length;
+    out.push(["danger", I.stop, `<span class="grow"><b>STOP RUNBOOK.</b> ${who} rejected <code>${esc(ev ? ev.action : "")}</code> on <code>${esc(ev ? ev.target : "")}</code> — it never ran. ${stopped ? `${stopped} remaining step${stopped === 1 ? " was" : "s were"} stopped.` : "It was the final step."}</span><a href="/api/runs/${esc(r.id)}.jsonl" download>Download audit log</a>`]);
+  } else if (r.status === "failed" || r.status === "stopped") {
+    const t = S.timeline.find(t => t.status === "failed");
+    const ev = t && [...S.audit].reverse().find(e => e.step === t.id && e.result === "failed");
+    const why = ev && ev.detail ? (typeof ev.detail === "string" ? ev.detail : ev.detail.reason || "") : "";
+    out.push(["danger", I.stop, `<span class="grow"><b>Step ${esc(t ? t.id : "")} failed — runbook halted.</b> ${esc(why)} No recovery was improvised; the remaining steps were stopped.</span>${r.id ? `<a href="/api/runs/${esc(r.id)}.jsonl" download>Download audit log</a>` : ""}`]);
+  }
+  if (!isOperator) out.push(["info", I.eye, `<span class="grow">You're watching a <b>live, read-only</b> view. Only a signed-in operator can start runs and approve destructive steps.</span><button class="linkish" data-act="signin">Operator sign in</button>`]);
+  if (!changed("notices", out)) return;
+  $("#notices").innerHTML = out.map(([k, ic, html]) => `<div class="notice ${k}">${ic}${html.startsWith("<span class=\"grow") ? html : `<span class="grow">${html}</span>`}</div>`).join("");
+}
+
+function renderKPIs() {
+  const m = S.metrics, cs = S.containers.filter(c => !c.sandbox);
+  const healthy = cs.filter(c => c.health === "healthy" || (c.health === "none" && c.status === "running")).length;
+  const tiles = [
+    ["Steps verified", `${m.steps_done}<small>/ ${m.steps_total}</small>`, "strict order · no skipping"],
+    ["Containers healthy", `${healthy}<small>/ ${cs.length}</small>`, S.mode === "live" ? "live Docker health checks" : "simulated engine"],
+    ["Destructive calls gated", `${m.destructive_gated}`, "blocked until a human decides"],
+    ["Human decisions", `<span class="g">${m.approved}</span><small>approved</small><span class="r">${m.rejected}</span><small>rejected</small>`, `${m.tokens_consumed} single-use token${m.tokens_consumed === 1 ? "" : "s"} consumed`],
+    ["Sandbox runs", `${m.sandbox_runs}`, "no network · 256 MB · non-root"],
+    ["Audit events", `${S.audit.length}`, "append-only JSONL"],
+  ];
+  if (!changed("kpis", tiles)) return;
+  $("#kpis").innerHTML = tiles.map(([l, v, s]) => `<div class="kpi"><div class="label">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join("");
+}
+
+function renderApproval() {
+  const p = S.pending_approval, el = $("#approval");
+  el.hidden = !p;
+  document.title = p ? "⚠ Approval required · WASPID" : "WASPID Operator Console";
+  if (!p) return;
+  if (!changed("approval", [p, isOperator, busyAction, S.run.busy])) return;
+  $("#apIcon").innerHTML = I.warn;
+  $("#apAction").textContent = p.action; $("#apTarget").textContent = p.target;
+  $("#apReason").textContent = p.reason; $("#apRisk").textContent = p.risk;
+  $("#apEffect").textContent = p.expected_effect; $("#apNext").textContent = p.next_step;
+  $("#apWait").dataset.since = p.requested_at; $("#apWait").dataset.fmt = "clock";
+  $("#apToken").innerHTML = `Token <code>${esc(p.approval_id)}</code> · single-use · bound to <code>${esc(p.action)}</code> on <code>${esc(p.target)}</code>`;
+  $("#rejectBtn").innerHTML = I.x + "Reject — stop runbook";
+  $("#approveBtn").innerHTML = I.check + "Approve &amp; execute";
+  const can = isOperator && !busyAction && !S.run.busy;
+  $("#rejectBtn").disabled = $("#approveBtn").disabled = !can;
+  $("#apActions").hidden = !isOperator;
+  $("#apViewer").hidden = isOperator;
+  $("#apViewer").innerHTML = `${I.eye.replace("<svg", '<svg width="15" height="15"')} Read-only view — waiting for an operator to decide. <button class="linkish" data-act="signin">Sign in</button>`;
+}
+
+function activeStep() {
+  const tl = S.timeline;
+  return tl.find(t => t.status === "running" || t.status === "waiting_for_approval")
+    || [...tl].reverse().find(t => ["successful", "failed", "rejected"].includes(t.status)) || tl[0];
+}
+function renderSteps() {
+  const tl = S.timeline;
+  if (followLive) selectedStep = activeStep()?.id;
+  $("#stepCount").textContent = `${tl.length} steps`;
+  if (!changed("steps", [tl.map(t => [t.status, t.started_at, t.finished_at]), selectedStep])) return;
+  $("#steps").innerHTML = tl.map((t, i) => {
+    let dur = "";
+    if (t.started_at && t.finished_at) dur = fmtDur(t.finished_at - t.started_at, "step");
+    else if (t.status === "running" && t.started_at) dur = `<span data-since="${t.started_at}" data-fmt="step"></span>`;
+    else if (t.status === "waiting_for_approval") dur = "awaiting human";
+    return `<li class="step s-${t.status}${t.id === selectedStep ? " sel" : ""}" data-id="${esc(t.id)}">
+      <div class="rail"><span class="node">${NODE[t.status] || ""}</span></div>
+      <div class="sb">
+        <div class="st"><span class="sid">${i + 1}. ${esc(t.id)}</span>${riskBadge(t.risk)}<span class="dur">${dur}</span></div>
+        <div class="sd">${esc(t.description)}</div>
+        <div class="sm"><code>${esc(t.action)}</code>${t.target ? ` → <span>${esc(t.target)}</span>` : ""}${t.requires_approval ? ` <span class="lock">${I.lock}approval</span>` : ""}</div>
+      </div></li>`;
+  }).join("");
+}
+
+function evtRow(e) {
+  const [cls, label] = RESULT[e.result] || ["muted", e.result];
+  const d = e.detail;
+  let extra = "";
+  if (d && typeof d === "object" && d.decided_by) extra = `<div class="extra">decided by <b>${esc(d.decided_by)}</b> · token <code>${esc(d.approval_id || "")}</code></div>`;
+  else if (e.result === "failed") extra = `<div class="extra bad">${esc(typeof d === "string" ? d : d && d.reason || "")}</div>`;
+  else if (d && typeof d === "object" && "exit_code" in d) extra = `<div class="extra">sandbox exit ${esc(d.exit_code)}${d.sandbox ? ` · ${esc(d.sandbox.container)} · network=${esc(d.sandbox.network)} · ${esc(d.sandbox.duration_s)}s` : ""}</div>`;
+  else if (d && typeof d === "object" && d.health) extra = `<div class="extra">health=${esc(d.health)} · status=${esc(d.status)}</div>`;
+  return `<div class="evt"><span class="t">${clock(e.timestamp)}</span><span class="es">${esc(e.step)}</span>
+    <span class="ea"><code>${esc(e.action)}</code>${e.target ? " → " + esc(e.target) : ""}</span>${riskBadge(e.risk)}
+    <span class="chip ${cls}">${esc(label)}</span>${extra}</div>`;
+}
+function renderActivity() {
+  const ev = S.audit;
+  $("#nEvents").textContent = ev.length;
+  if (!changed("audit", [S.run.id, ev.length, isOperator])) return;
+  const sc = $("#feedScroll"), atBottom = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 40;
+  $("#feed").innerHTML = ev.length ? ev.map(evtRow).join("")
+    : `<div class="empty">${I.pulse}<b>No activity yet</b><span>${isOperator ? "Press <b>Start run</b> to execute the runbook against the infrastructure." : "Waiting for an operator to start a run."}</span></div>`;
+  if (atBottom) sc.scrollTop = sc.scrollHeight;
+}
+
+function renderDetail() {
+  const t = S.timeline.find(x => x.id === selectedStep);
+  if (!t || !changed("detail", [t, followLive, S.pending_approval && S.pending_approval.step === t.id])) return;
+  const [cc, cl] = STEP_CHIP[t.status] || ["muted", t.status];
+  const facts = [["Action", t.action], ["Target", t.target || "—"], ["Risk", riskLabel(t.risk)],
+    ["Requires approval", t.requires_approval ? "yes — human only" : "no"],
+    ["Started", t.started_at ? new Date(t.started_at * 1000).toLocaleTimeString([], {hour12: false}) : "—"],
+    ["Duration", t.started_at && t.finished_at ? fmtDur(t.finished_at - t.started_at, "step") : "—"]];
+  if (t.approval_id) facts.push(["Approval token", t.approval_id]);
+  let body = "";
+  const res = t.result;
+  if (res && typeof res === "object" && "exit_code" in res) {
+    const sb = res.sandbox || {};
+    [["Exit code", res.exit_code], ["Sandbox container", sb.container || "—"], ["Image", sb.image || "—"],
+     ["Network", sb.network || "—"], ["Memory / CPU", sb.memory ? `${sb.memory} / ${sb.cpus} CPU` : "—"], ["User", sb.user || "—"]]
+      .forEach(f => facts.push(f));
+    body = `<div class="term"><div class="term-h"><i></i><i></i><i></i><span>sandbox output · exit ${esc(res.exit_code)}</span></div><pre>${esc(res.output || "(no output)")}</pre></div>`;
+  } else if (res != null) {
+    body = `<div class="term"><div class="term-h"><i></i><i></i><i></i><span>tool result</span></div><pre>${hlJSON(res)}</pre></div>`;
+  } else if (t.status === "waiting_for_approval") {
+    body = `<div class="notice" style="border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:var(--warn-bg)">${I.warn.replace("<svg", '<svg style="color:var(--warn)"')}<span class="grow">Blocked at the tool layer. The engine will not call <code>${esc(t.action)}</code> until a human approves token <code>${esc(t.approval_id)}</code>.</span></div>`;
+  } else {
+    body = `<div class="empty" style="padding:28px">${I.info}<span>${t.status === "stopped" ? "Not executed — the runbook stopped before this step." : "Not executed yet."}</span></div>`;
+  }
+  $("#detail").innerHTML = `
+    <div class="d-head"><h3>${esc(t.id)}</h3><span class="chip ${cc}">${esc(cl)}</span>${riskBadge(t.risk)}
+      ${followLive ? '<span class="chip info follow">following live</span>' : '<button class="small-btn follow" data-act="follow">Follow live</button>'}</div>
+    <div style="color:var(--text-2)">${esc(t.description)}</div>
+    <div class="facts">${facts.map(([k, v]) => `<div class="fact"><div class="label">${esc(k)}</div><div class="v">${esc(v)}</div></div>`).join("")}</div>
+    ${body}`;
+}
+
+function renderContainers() {
+  const cs = S.containers;
+  const main = cs.filter(c => !c.sandbox);
+  $("#ctrCount").textContent = S.containers_at ? `${main.length} services${cs.length > main.length ? " + sandbox" : ""}` : "";
+  if (!logContainer && main.length) { logContainer = main[0].name; pollLogs(); }
+  if (changed("logSel", main.map(c => c.name))) {
+    $("#logSel").innerHTML = main.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+  }
+  $("#logSel").value = logContainer || "";
+  if (!changed("ctrs", [cs, logContainer])) return;
+  $("#ctrs").innerHTML = cs.length ? cs.map(c => {
+    const running = c.status === "running";
+    let dot = c.sandbox ? "sandbox" : !running ? "down" : ["healthy", "starting", "unhealthy"].includes(c.health) ? c.health : "healthy";
+    const chip = c.sandbox ? ["violet", "sandbox · no network"] : !running ? ["danger", c.status || "down"]
+      : c.health === "healthy" ? ["ok", "healthy"] : c.health === "starting" ? ["warn", "starting"]
+      : c.health === "unhealthy" ? ["danger", "unhealthy"] : ["ok", "running"];
+    const st = c.stats, h = c.history;
+    const stats = !c.sandbox && running && S.mode === "live" ? `<div class="ctr-stats">
+        <div class="mstat cpu"><div class="row">CPU <b>${st ? st.cpu_percent.toFixed(1) + "%" : "…"}</b></div>${spark(h && h.cpu, "cpu", 2, true)}</div>
+        <div class="mstat mem"><div class="row">MEM <b>${st ? fmtBytes(st.mem_bytes) : "…"}</b></div>${spark(h && h.mem, "mem", 2 * 1048576, false)}</div>
+      </div>` : "";
+    return `<div class="ctr${c.name === logContainer ? " sel" : ""}" data-name="${esc(c.name)}" data-sandbox="${c.sandbox ? 1 : 0}">
+      <div class="ctr-top"><span class="hdot ${dot}"></span><span class="ctr-name">${esc(c.name)}</span><span class="chip ${chip[0]}">${esc(chip[1])}</span></div>
+      <div class="ctr-sub"><span class="mono">${esc(c.image || "")}</span>${running && c.started_at ? `· up <span data-since="${c.started_at}"></span>` : ""}${c.restart_count ? ` · restarts ${esc(c.restart_count)}` : ""}</div>
+      ${stats}</div>`;
+  }).join("") : `<div class="empty">${I.box}<b>${S.docker_error ? "Docker unreachable" : "No WASPID containers"}</b><span>${S.mode === "live" ? "Bring up the demo stack: <code>./scripts/live.sh</code>" : ""}</span></div>`;
+}
+
+function tick() {
+  if (!S) return;
+  const n = now();
+  $$("[data-since]").forEach(el => { const s = +el.dataset.since; if (s) el.textContent = fmtDur(n - s, el.dataset.fmt); });
+  const r = S.run;
+  $("#elapsed").textContent = r.started_at ? fmtDur((r.finished_at || n) - r.started_at, "clock") : "—";
+}
+setInterval(tick, 500);
+
+// ---------- logs ----------
+let logsLoadedFor = null;
+async function pollLogs() {
+  // Background tabs skip refreshes, but a newly selected container always loads once.
+  if (!logContainer || logsPaused || (document.hidden && logsLoadedFor === logContainer)) return;
+  const name = logContainer;
+  try {
+    const r = await fetch(`/api/logs?container=${encodeURIComponent(logContainer)}&tail=200`, { cache: "no-store" });
+    const d = await r.json();
+    const sc = $("#logScroll"), atBottom = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 30;
+    const text = d.logs != null ? (d.logs.trim() ? d.logs : "(no output yet)") : (d.error || "");
+    if (name !== logContainer) return;
+    logsLoadedFor = name;
+    if ($("#logs").textContent !== text) { $("#logs").textContent = text; if (atBottom) sc.scrollTop = sc.scrollHeight; }
+  } catch {}
+}
+setInterval(pollLogs, 2000);
+document.addEventListener("visibilitychange", pollLogs);
+function renderLogPause() { $("#logPause").innerHTML = logsPaused ? I.play + "Resume" : I.pause + "Pause"; }
+
+// ---------- history & runbook ----------
+async function loadHistory() {
+  try {
+    const runs = await (await fetch("/api/runs", { cache: "no-store" })).json();
+    const oc = { completed: "ok", rejected: "danger", failed: "danger", incomplete: "warn" };
+    $("#history").innerHTML = runs.length ? `<table><thead><tr><th>Run</th><th>Started</th><th>Outcome</th><th>Events</th><th>Approvals</th><th></th></tr></thead><tbody>${
+      runs.map(r => `<tr class="${S && r.run_id === S.run.id ? "cur" : ""}"><td class="mono">${esc(r.run_id)}</td><td>${new Date(r.started).toLocaleString([], {hour12: false})}</td>
+        <td><span class="chip ${oc[r.outcome] || "muted"}">${esc(r.outcome)}</span></td><td>${esc(r.events)}</td><td>${esc(r.approvals)}</td>
+        <td><a class="linkish" href="/api/runs/${esc(r.run_id)}.jsonl" download>audit.jsonl</a></td></tr>`).join("")}</tbody></table>`
+      : `<div class="empty">${I.info}<b>No runs yet</b><span>Completed and stopped runs appear here with their audit logs.</span></div>`;
+  } catch {}
+}
+async function loadRunbook() {
+  try { const d = await (await fetch("/api/runbook")).json(); $("#rbSource").innerHTML = hlYAML(d.source); } catch {}
+}
+
+// ---------- auth dialog ----------
+function renderAuth() {
+  const b = $("#authBtn");
+  if (isOperator) {
+    const n = opName || "operator";
+    b.innerHTML = `<span class="av">${esc(n[0].toUpperCase())}</span>${esc(n)}`;
+    b.title = "Signed in as operator";
+  } else { b.innerHTML = I.lock + "Operator sign in"; b.title = "Sign in to run and approve"; }
+}
+function openAuth() {
+  const body = $("#authBody");
+  if (isOperator) {
+    body.innerHTML = `<h3>Signed in as operator</h3><p>You can start runs and approve or reject destructive steps. Decisions are recorded in the audit log as <b>${esc(opName || "operator")}</b>.</p>
+      <div class="dlg-actions"><button data-act="signout" class="reject">Sign out</button><button data-act="close">Close</button></div>`;
+  } else {
+    body.innerHTML = `<h3>Operator sign in</h3><p>Approvals are bound to a human. Enter the operator token printed by the server (or stored in <code>.env</code>).</p>
+      <label class="field"><span class="label">Your name (for the audit log)</span><input id="inName" autocomplete="name" maxlength="40" value="${esc(opName)}" placeholder="e.g. oncall-durga"></label>
+      <label class="field"><span class="label">Operator token</span><input id="inToken" type="password" autocomplete="current-password" placeholder="WASPID_OPERATOR_TOKEN"></label>
+      <div class="err" id="authErr"></div>
+      <div class="dlg-actions"><button data-act="close">Cancel</button><button class="primary" data-act="doSignin">Sign in</button></div>`;
+  }
+  $("#authDlg").showModal();
+  const f = $("#inName"); if (f) (f.value ? $("#inToken") : f).focus();
+}
+async function doSignin() {
+  const t = $("#inToken").value.trim(), n = $("#inName").value.trim();
+  if (!t) { $("#authErr").textContent = "Enter the operator token."; return; }
+  const r = await fetch("/api/auth", { method: "POST", headers: { "X-Operator-Token": t } });
+  if (!r.ok) { $("#authErr").textContent = "That token is not valid."; return; }
+  token = t; opName = n; store.set("waspid.token", t); store.set("waspid.name", n || null);
+  $("#authDlg").close(); setOperator(true); toast("Signed in — you can now run and approve.", "ok");
+}
+
+// ---------- events ----------
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-act]");
+  if (a) {
+    const act = a.dataset.act;
+    if (act === "signin") openAuth();
+    else if (act === "close") $("#authDlg").close();
+    else if (act === "doSignin") doSignin();
+    else if (act === "signout") { token = null; store.set("waspid.token", null); $("#authDlg").close(); setOperator(false); }
+    else if (act === "follow") { followLive = true; keys.detail = null; render(); }
+    return;
+  }
+  const step = e.target.closest(".step");
+  if (step) { selectedStep = step.dataset.id; followLive = false; setTab("detail"); keys.steps = keys.detail = null; render(); return; }
+  const ctr = e.target.closest(".ctr");
+  if (ctr && ctr.dataset.sandbox === "0") { logContainer = ctr.dataset.name; keys.ctrs = null; renderContainers(); $("#logs").textContent = "Loading…"; pollLogs(); }
+});
+$("#authDlg").addEventListener("keydown", e => { if (e.key === "Enter" && $("#inToken")) doSignin(); });
+$("#authBtn").onclick = openAuth;
+$("#startBtn").onclick = () => api("/api/start");
+$("#resetBtn").onclick = () => api("/api/reset");
+$("#approveBtn").onclick = () => S.pending_approval && api("/api/approve", { approval_id: S.pending_approval.approval_id });
+$("#rejectBtn").onclick = () => S.pending_approval && api("/api/reject", { approval_id: S.pending_approval.approval_id });
+$("#logSel").onchange = e => { logContainer = e.target.value; keys.ctrs = null; renderContainers(); pollLogs(); };
+$("#logPause").onclick = () => { logsPaused = !logsPaused; renderLogPause(); pollLogs(); };
+function setTab(name) {
+  activeTab = name;
+  $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
+  $$(".pane").forEach(p => p.hidden = p.dataset.pane !== name);
+  if (name === "history") loadHistory();
+}
+$("#tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (t) setTab(t.dataset.tab); });
+
+// theme
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("#themeBtn").innerHTML = t === "dark" ? I.sun : I.moon;
+}
+applyTheme(store.get("waspid.theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+$("#themeBtn").onclick = () => { const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; store.set("waspid.theme", t); applyTheme(t); };
+
+// ---------- boot ----------
+(function boot() {
+  const m = location.hash.match(/operator=([^&]+)/);
+  if (m) { token = decodeURIComponent(m[1]); store.set("waspid.token", token); history.replaceState(null, "", location.pathname + location.search); }
+  renderAuth(); renderLogPause(); verifyToken(); loadRunbook(); connect();
+})();
+</script>
+</body>
+</html>

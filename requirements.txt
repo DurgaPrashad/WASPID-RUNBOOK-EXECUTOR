@@ -1,0 +1,6 @@
+# WASPID Runbook Executor — Python 3.12+
+# (dashboard/server.py and demo.py are stdlib-only; no extra deps needed for them)
+mcp[cli]<2
+docker
+pyyaml
+pytest

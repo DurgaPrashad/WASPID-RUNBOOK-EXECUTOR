@@ -1,0 +1,10 @@
+# local environment / secrets
+.env
+.venv/
+# runtime output
+audit/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+.ngrok.log
