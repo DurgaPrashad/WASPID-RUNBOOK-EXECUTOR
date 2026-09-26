@@ -1,32 +1,6 @@
 # WASPID Runbook Executor
 
 
-<div align="center">
-
-## ⚡ WASPID Reflex — Agents That Act, Locally
-
-> **A local-first AI worker that sees, understands, and acts on your computer.**
-
-<table>
-<tr>
-<td align="center"><b>👁️ SEE</b><br/>Understands apps & web pages</td>
-<td align="center"><b>🧠 THINK</b><br/>Runs local AI models</td>
-<td align="center"><b>🖱️ ACT</b><br/>Controls apps with its own cursor</td>
-<td align="center"><b>🧠 REMEMBER</b><br/>Learns repeatable workflows</td>
-</tr>
-</table>
-
-**macOS · Windows · Linux · Offline-first · Open Source**
-
-Reflex is a separate WASPID project exploring the next generation of **Agents That Act** — AI that doesn't just respond, but operates real software, verifies its actions, and asks for confirmation before sensitive operations.
-
-**WASPID acts on infrastructure.
-Reflex acts on the computer.**
-
-🌐 **[reflex.waspid.com](https://reflex.waspid.com/)**
-
-</div>
-
 
 
 
@@ -418,6 +392,36 @@ The code imports itself as `waspid.*`. `_bootstrap.py` makes that work whatever 
 folder is called.
 
 ## AI Disclosure
+<div align="center">
+
+## ⚡ We Built Reflex — An Agent That Acts
+
+> **From AI that talks to AI that acts.**
+
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│                         **REFLEX**                           │
+│                                                              │
+│     A local-first AI agent built to **see, understand,      │
+│              and act on your computer.**                    │
+│                                                              │
+│     👁️ See  ·  🧠 Understand  ·  🖱️ Act  ·  🧠 Learn       │
+│                                                              │
+│     **Offline-first · Open Source · macOS · Windows · Linux**│
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+We built **WASPID Reflex** as an AI agent that doesn't just generate
+responses — it **operates the computer**, using its own cursor, local
+AI models, voice, memory, and verified actions.
+
+**WASPID acts on infrastructure.
+Reflex acts on the computer.**
+
+🌐 **https://reflex.waspid.com/**
+
+</div>
+
 
 AI assistants used:
 - TrueFoundry: code generation and documentation
