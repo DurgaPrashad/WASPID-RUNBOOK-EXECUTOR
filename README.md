@@ -45,7 +45,8 @@ guardrails: a confused or jailbroken model can still delete a volume or reboot a
 
 
 ## What's connected
-<img width="2896" height="1598" alt="image" src="https://github.com/user-attachments/assets/af18de19-2ee6-4d7c-9656-b266914e531f" />
+<img width="2552" height="1442" alt="image" src="https://github.com/user-attachments/assets/8bc04b4b-2884-4216-97ce-3344a1779c4d" />
+
 
 | Platform | How WASPID connects | What the agent can do | Status |
 |---|---|---|---|
@@ -156,6 +157,7 @@ enforces the rules in code:**
 - Every tool call and every human decision goes to the audit log.
 
 The **TrueFoundry AI Gateway** speaks the OpenAI API, so one client covers both:
+<img width="2626" height="1568" alt="image" src="https://github.com/user-attachments/assets/37fcbb78-dfcc-4a32-bb1d-6ade0f6a07cc" />
 
 ```bash
 # TrueFoundry AI Gateway: any model your gateway exposes (OpenAI, Anthropic, Bedrock, self-hosted…)
