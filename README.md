@@ -386,4 +386,4 @@ folder is called.
 ## AI Disclosure
 
 AI assistants used:
-- Claude (Anthropic): code generation and documentation
+- TrueFoundry: code generation and documentation
