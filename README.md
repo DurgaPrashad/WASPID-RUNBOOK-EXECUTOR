@@ -43,7 +43,9 @@ guardrails: a confused or jailbroken model can still delete a volume or reboot a
 - **Rejection means STOP RUNBOOK.** The engine halts and marks the remaining steps stopped.
 - **Everything is audited** in an append-only JSONL log.
 
+
 ## What's connected
+<img width="2896" height="1598" alt="image" src="https://github.com/user-attachments/assets/af18de19-2ee6-4d7c-9656-b266914e531f" />
 
 | Platform | How WASPID connects | What the agent can do | Status |
 |---|---|---|---|
